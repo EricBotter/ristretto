@@ -24,7 +24,7 @@ object SuboptimalRegisterAllocation {
     // size: 16 -> 16 + 0 = 16
     // size: 20 -> 20 + 12 = 32
     // ...
-    val size = unalignedSize + ((16 - unalignedSize) % 16)
+    val size = unalignedSize + (16 - (unalignedSize % 16)) % 16
     Label(s"_$label") ::
     Push(BP()) ::
     Mov(SP(), BP()) ::

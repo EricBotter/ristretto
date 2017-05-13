@@ -63,6 +63,7 @@ object Compiler extends Errors {
                   if (printAsm0 && ! pretty) println(a0)
                   if (printAsm0 && pretty)   AsmPrint.print(System.out, a0)
 
+                  ristretto.asm.RegisterAllocation.explore(a0)
                   val a = ristretto.asm.SuboptimalRegisterAllocation.regalloc(a0)
 
                   if (printAsm && ! pretty) println(a)
