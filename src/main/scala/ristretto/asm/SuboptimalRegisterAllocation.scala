@@ -58,7 +58,7 @@ object SuboptimalRegisterAllocation {
   // This is x86-64 SysV ABI-specific
   // This first 6 arguments are passed in registers.
   // The rest on the stack.
-  def argAddress(i: Int) = i match {
+  def argAddress(i: Int): Operand = i match {
     case 0 => DI()
     case 1 => SI()
     case 2 => DX()
@@ -68,7 +68,7 @@ object SuboptimalRegisterAllocation {
     case i => Address(WORDSIZE * (i-6), SP()) // 6 -> 0(sp), 7 -> 8(sp), 8 -> 16(sp), ...
   }
 
-  def paramAddress(i: Int) = i match {
+  def paramAddress(i: Int): Operand = i match {
     case 0 => DI()
     case 1 => SI()
     case 2 => DX()
