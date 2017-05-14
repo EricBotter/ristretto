@@ -4,6 +4,7 @@ import ristretto.asm.AsmSyntax._
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
+import ristretto.main.{Compiler => Errors}
 
 object RegisterAllocation {
 
@@ -124,30 +125,23 @@ object RegisterAllocation {
   }
 
   def registerArray: Array[AsmSyntax.Operand] = Array(
-    AX(), BX(), CX(), DX(), R8(), R9(), R10(), R11(), R12(), R13(), R14(), R15()
+    DI(), SI(), AX(), BX(), CX(), DX(), R8(), R9(), R10(), R11(), R12(), R13(), R14(), R15()
   )
-
-  def paramAddress(i: Int): Operand = i match {
-    case 0 => DI()
-    case 1 => SI()
-    case 2 => DX()
-    case 3 => CX()
-    case 4 => R8()
-    case 5 => R9()
-    case _ => Address(WORDSIZE * (i - 6 + 2), BP()) // 6 -> 16(bp), 7 -> 24(bp), 8 -> 32(bp)
-  }
 
   def coloring(graph: Map[AsmSyntax.Operand, Set[AsmSyntax.Operand]],
                colors: Array[AsmSyntax.Operand])
   : Map[AsmSyntax.Operand, AsmSyntax.Operand] = {
-    if (graph.isEmpty)
-      return Map.empty
-    if (colors.length == 0 && graph != Map.empty)
-      throw new Exception // TODO - spilling
-    val max_deg: AsmSyntax.Operand = graph.maxBy(_._2.size)._1
-    val newgraph = for ((k, v) <- graph - max_deg) yield (k, v - max_deg)
-    val chosen = colors.last
-    coloring(newgraph, colors.dropRight(1)) + (max_deg -> chosen)
+    val available = mutable.Set[AsmSyntax.Operand]()
+    var colored = Map[AsmSyntax.Operand, AsmSyntax.Operand]()
+
+    for ((k,v) <- graph) {
+      for (c <- colors) available += c
+      for (n <- v) available -= colored.getOrElse(n, SP())
+      if (available.isEmpty)
+        Errors.fatalError("could not color the graph")
+      colored = colored + (k -> available.last)
+    }
+    colored
   }
 
   def applyAllocation(proc: Proc, coloring: Map[AsmSyntax.Operand, AsmSyntax.Operand]): Proc = {
@@ -192,7 +186,7 @@ object RegisterAllocation {
           case x => x
         }
       } catch {
-        case _: NoSuchElementException => CommentInsn("Instruction removed LUL")
+        case _: NoSuchElementException => CommentInsn("Instruction removed (destination unused): " + stm)
       }
     })
   }
@@ -246,16 +240,67 @@ object RegisterAllocation {
     })
   }
 
+  def paramAddress(i: Int): Operand = i match {
+    case 0 => DI()
+    case 1 => SI()
+    case 2 => DX()
+    case 3 => CX()
+    case 4 => R8()
+    case 5 => R9()
+    case _ => Address(WORDSIZE * (i - 6 + 2), BP()) // 6 -> 16(bp), 7 -> 24(bp), 8 -> 32(bp)
+  }
+
+  def allocateParams(proc: Proc): Proc = {
+    Proc(proc.location, for (stm <- proc.insns) yield stm match {
+      case Push(Param(src)) => Push(paramAddress(src))
+      case Pop1(Param(dst)) => Pop1(paramAddress(dst))
+      case Add(Param(src), Param(dst)) => Add(paramAddress(src), paramAddress(dst))
+      case Add(src, Param(dst)) => Add(src, paramAddress(dst))
+      case Add(Param(src), dst) => Add(paramAddress(src), dst)
+      case Sub(Param(src), Param(dst)) => Sub(paramAddress(src), paramAddress(dst))
+      case Sub(src, Param(dst)) => Sub(src, paramAddress(dst))
+      case Sub(Param(src), dst) => Sub(paramAddress(src), dst)
+      case Mul(Param(src), Param(dst)) => Mul(paramAddress(src), paramAddress(dst))
+      case Mul(src, Param(dst)) => Mul(src, paramAddress(dst))
+      case Mul(Param(src), dst) => Mul(paramAddress(src), dst)
+      case Div(Param(dst)) => Div(paramAddress(dst))
+      case Shl(Param(src), Param(dst)) => Shl(paramAddress(src), paramAddress(dst))
+      case Shl(src, Param(dst)) => Shl(src, paramAddress(dst))
+      case Shl(Param(src), dst) => Shl(paramAddress(src), dst)
+      case Shr(Param(src), Param(dst)) => Shr(paramAddress(src), paramAddress(dst))
+      case Shr(src, Param(dst)) => Shr(src, paramAddress(dst))
+      case Shr(Param(src), dst) => Shr(paramAddress(src), dst)
+      case Mov(Param(src), Param(dst)) => Mov(paramAddress(src), paramAddress(dst))
+      case Mov(src, Param(dst)) => Mov(src, paramAddress(dst))
+      case Mov(Param(src), dst) => Mov(paramAddress(src), dst)
+      case And(Param(src), Param(dst)) => And(paramAddress(src), paramAddress(dst))
+      case And(src, Param(dst)) => And(src, paramAddress(dst))
+      case And(Param(src), dst) => And(paramAddress(src), dst)
+      case Xor(Param(src), Param(dst)) => Xor(paramAddress(src), paramAddress(dst))
+      case Xor(src, Param(dst)) => Xor(src, paramAddress(dst))
+      case Xor(Param(src), dst) => Xor(paramAddress(src), dst)
+      case Or(Param(src), Param(dst)) => Or(paramAddress(src), paramAddress(dst))
+      case Or(src, Param(dst)) => Or(src, paramAddress(dst))
+      case Or(Param(src), dst) => Or(paramAddress(src), dst)
+      case Cmp(Param(r1), Param(r2)) => Cmp(paramAddress(r1), paramAddress(r2))
+      case Cmp(r1, Param(r2)) => Cmp(r1, paramAddress(r2))
+      case Cmp(Param(r1), r2) => Cmp(paramAddress(r1), r2)
+      case _ => stm
+    })
+  }
+
   def regalloc(root: Root): Root = {
     Root(
       for (
         proc <- root.procs
       ) yield {
         val proc2 = allocateArgs(proc)
-        val live = liveness(proc2)
+        val proc3 = allocateParams(proc2)
+
+        val live = liveness(proc3)
         val graph = inference(live)
         val colors = coloring(graph, registerArray)
-        val end = applyAllocation(proc2, colors)
+        val end = applyAllocation(proc3, colors)
         Proc(end.location, wrapPrologueAndEpilogue(
           callToArgNum.max._2,
           Map.empty,
