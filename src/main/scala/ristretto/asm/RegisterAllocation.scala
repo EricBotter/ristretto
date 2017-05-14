@@ -9,6 +9,7 @@ import ristretto.main.{Compiler => Errors}
 object RegisterAllocation {
 
   val WORDSIZE = 8
+
   def wrapPrologueAndEpilogue(maxArgs: Int, map: Map[String, Operand], label: String, insns: List[Insn]): List[Insn] = {
     // On MacOS, we need to align the stack on 16-byte boundaries
     val unalignedSize = (map.size + maxArgs) * WORDSIZE
@@ -49,64 +50,147 @@ object RegisterAllocation {
       case _ =>
     }
 
+    var labels: Map[String, Int] = Map.empty
+    var jumps: Map[Int, String] = Map.empty
+
     var live = new ListBuffer[Set[AsmSyntax.Operand]]
     live += Set.empty
+    for (stm <- proc.insns.reverse) {
+      var current = live.last
+      current = stm match {
+        case Push(src@Pseudo(_)) => current + src
+        case Pop1(dst@Pseudo(_)) => current - dst
+        case Add(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Add(_, dst@Pseudo(_)) => current - dst
+        case Add(src@Pseudo(_), _) => current + src
+        case Sub(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Sub(_, dst@Pseudo(_)) => current - dst
+        case Sub(src@Pseudo(_), _) => current + src
+        case Mul(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Mul(_, dst@Pseudo(_)) => current - dst
+        case Mul(src@Pseudo(_), _) => current + src
+        case Div(dst@Pseudo(_)) => current - dst
+        case Shl(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Shl(_, dst@Pseudo(_)) => current - dst
+        case Shl(src@Pseudo(_), _) => current + src
+        case Shr(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Shr(_, dst@Pseudo(_)) => current - dst
+        case Shr(src@Pseudo(_), _) => current + src
+        case Mov(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Mov(_, dst@Pseudo(_)) => current - dst
+        case Mov(src@Pseudo(_), _) => current + src
+        case And(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case And(_, dst@Pseudo(_)) => current - dst
+        case And(src@Pseudo(_), _) => current + src
+        case Xor(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Xor(_, dst@Pseudo(_)) => current - dst
+        case Xor(src@Pseudo(_), _) => current + src
+        case Or(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
+        case Or(_, dst@Pseudo(_)) => current - dst
+        case Or(src@Pseudo(_), _) => current + src
+        case Cmp(r1@Pseudo(_), r2@Pseudo(_)) => current + r2 + r1
+        case Cmp(_, r2@Pseudo(_)) => current + r2
+        case Cmp(r1@Pseudo(_), _) => current + r1
+
+        case Jmp(label) => jumps += live.length -> label; current
+        case JE(label) => jumps += live.length -> label; current
+        case JG(label) => jumps += live.length -> label; current
+        case JL(label) => jumps += live.length -> label; current
+        case JGE(label) => jumps += live.length -> label; current
+        case JLE(label) => jumps += live.length -> label; current
+        case JNE(label) => jumps += live.length -> label; current
+        case Call(fun) =>
+          current ++ (for (i <- 0 to callToArgNum(fun.toString)) yield Arg(i))
+        case Ret() => current
+        case Label(location) => labels += location -> live.length; current
+        case CommentInsn(_) => current
+        case _ => current
+      }
+      live += current
+    }
+
+    var resolved = for ((k, v) <- jumps) yield k -> labels(v)
     var changed = true
     while (changed) {
       changed = false
-      for (stm <- proc.insns.reverse) {
-        var current = live.last
-        current = stm match {
-          case Push(src@Pseudo(_)) => current + src
-          case Pop1(dst@Pseudo(_)) => current - dst
-          case Add(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Add(_, dst@Pseudo(_)) => current - dst
-          case Add(src@Pseudo(_), _) => current + src
-          case Sub(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Sub(_, dst@Pseudo(_)) => current - dst
-          case Sub(src@Pseudo(_), _) => current + src
-          case Mul(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Mul(_, dst@Pseudo(_)) => current - dst
-          case Mul(src@Pseudo(_), _) => current + src
-          case Div(dst@Pseudo(_)) => current - dst
-          case Shl(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Shl(_, dst@Pseudo(_)) => current - dst
-          case Shl(src@Pseudo(_), _) => current + src
-          case Shr(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Shr(_, dst@Pseudo(_)) => current - dst
-          case Shr(src@Pseudo(_), _) => current + src
-          case Mov(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Mov(_, dst@Pseudo(_)) => current - dst
-          case Mov(src@Pseudo(_), _) => current + src
-          case And(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case And(_, dst@Pseudo(_)) => current - dst
-          case And(src@Pseudo(_), _) => current + src
-          case Xor(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Xor(_, dst@Pseudo(_)) => current - dst
-          case Xor(src@Pseudo(_), _) => current + src
-          case Or(src@Pseudo(_), dst@Pseudo(_)) => current - dst + src
-          case Or(_, dst@Pseudo(_)) => current - dst
-          case Or(src@Pseudo(_), _) => current + src
-          case Cmp(r1@Pseudo(_), r2@Pseudo(_)) => current + r2 + r1
-          case Cmp(_, r2@Pseudo(_)) => current + r2
-          case Cmp(r1@Pseudo(_), _) => current + r1
-
-          case Jmp(label) => current
-          case JE(label) => current
-          case JG(label) => current
-          case JL(label) => current
-          case JGE(label) => current
-          case JLE(label) => current
-          case JNE(label) => current
-          case Call(fun) =>
-            current ++ (for (i <- 0 to callToArgNum(fun.toString)) yield Arg(i))
-          case Ret() => current
-          case Label(location) => current
-          case CommentInsn(_) => current
-          case _ => current
+      for ((k, v) <- resolved) {
+        if (!live(k).subsetOf(live(v)))
+          changed = true
+        live(v) ++= live(k)
+      }
+      var i = 0
+      if (changed)
+        for (stm <- proc.insns.reverse) {
+          stm match {
+            case Push(src@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Pop1(dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Add(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Add(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Add(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Sub(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Sub(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Sub(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Mul(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Mul(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Mul(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Div(dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Shl(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Shl(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Shl(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Shr(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Shr(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Shr(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Mov(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Mov(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Mov(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case And(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case And(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case And(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Xor(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Xor(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Xor(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Or(src@Pseudo(_), dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst + src
+            case Or(_, dst@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) - dst
+            case Or(src@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + src
+            case Cmp(r1@Pseudo(_), r2@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + r2 + r1
+            case Cmp(_, r2@Pseudo(_)) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + r2
+            case Cmp(r1@Pseudo(_), _) =>
+              live(i + 1) = (live(i + 1) ++ live(i)) + r1
+            case _ => Nil
+          }
         }
-        live += current
-      } // TODO - fix jumps and iterate again
     }
     live.toList.reverse
   }
@@ -118,6 +202,8 @@ object RegisterAllocation {
         if (t1 != t2) {
           out(t1) = out.getOrElse(t1, Set.empty) + t2
           out(t2) = out.getOrElse(t2, Set.empty) + t1
+        } else {
+          out(t1) = out.getOrElse(t1, Set.empty)
         }
       }
     }
@@ -134,7 +220,7 @@ object RegisterAllocation {
     val available = mutable.Set[AsmSyntax.Operand]()
     var colored = Map[AsmSyntax.Operand, AsmSyntax.Operand]()
 
-    for ((k,v) <- graph) {
+    for ((k, v) <- graph) {
       for (c <- colors) available += c
       for (n <- v) available -= colored.getOrElse(n, SP())
       if (available.isEmpty)
