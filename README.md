@@ -13,6 +13,9 @@
 The above will make most example programs not work (they either segfault or 
 continuously loop). One that is known to work is print.
 
+During compilation, the Scala compiler might throw a stack overflow exception. 
+Make sure to give it enough stack space (I gave 4MB).
+
 # Ristretto
 
 This is a compiler for a small language called Ristretto, consisting of integer
