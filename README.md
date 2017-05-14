@@ -1,3 +1,18 @@
+# Homework 5
+
+### Limitations
+
+- Liveness does not consider registers used by other instructions (like idiv,
+  calls and the registers already present in the code)
+- Liveness does not consider offsets (for example, in 16(%rax), %rax is not 
+  considered live)
+- There is no spilling: if graph coloring fails, it will throw an error
+- For a reason I wasn't able to figure out, recursive calls do not work 
+  (they cause a segmentation fault)
+
+The above will make most example programs not work (they either segfault or 
+continuously loop). One that is known to work is print.
+
 # Ristretto
 
 This is a compiler for a small language called Ristretto, consisting of integer
