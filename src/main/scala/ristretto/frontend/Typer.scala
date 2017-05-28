@@ -10,6 +10,9 @@ object Typer {
   case class IntType() extends Type {
     override def toString = "int"
   }
+  case class FloatType() extends Type {
+    override def toString = "float"
+  }
   case class BooleanType() extends Type {
     override def toString = "boolean"
   }
@@ -179,13 +182,24 @@ object Typer {
 
   def typeCheck(e: Exp)(env: Env): Type = e match {
     case IntLit(_) => IntType()
+    case FloatLit(_) => FloatType()
     case BooleanLit(_) => BooleanType()
     case StringLit(_) => ArrayType(IntType())
     case Arith(e1, e2) =>
       (typeCheck(e1)(env), typeCheck(e2)(env)) match {
         case (IntType(), IntType()) => IntType()
+        case (FloatType(), IntType()) => FloatType()
+        case (IntType(), FloatType()) => FloatType()
+        case (FloatType(), FloatType()) => FloatType()
         case _ =>
-          Errors.error(e, "operands of arithmetic operator must be integers")
+          Errors.error(e, "operands of arithmetic operator must be integers or floats")
+          UnknownType()
+      }
+    case Mod(e1, e2) =>
+      (typeCheck(e1)(env), typeCheck(e2)(env)) match {
+        case (IntType(), IntType()) => IntType()
+        case _ =>
+          Errors.error(e, "operands of modulus operator must be integers")
           UnknownType()
       }
     case Equality(e1, e2) =>
@@ -198,8 +212,11 @@ object Typer {
     case Rel(e1, e2) =>
       (typeCheck(e1)(env), typeCheck(e2)(env)) match {
         case (IntType(), IntType()) => BooleanType()
+        case (FloatType(), IntType()) => BooleanType()
+        case (IntType(), FloatType()) => BooleanType()
+        case (FloatType(), FloatType()) => BooleanType()
         case _ =>
-          Errors.error(e, "operands of relational operators must be integers")
+          Errors.error(e, "operands of relational operators must be integers or floats")
           UnknownType()
       }
     case Bool(e1, e2) =>
@@ -219,8 +236,9 @@ object Typer {
     case Neg(e) =>
       typeCheck(e)(env) match {
         case IntType() => IntType()
+        case FloatType() => FloatType()
         case t =>
-          Errors.error(e, "operand of negation operator must be integer")
+          Errors.error(e, "operand of negation operator must be integer or float")
           UnknownType()
       }
     case Var(x) => env.get(x) match {
@@ -313,6 +331,7 @@ object Typer {
   def isAllowedInArrayLiteral(e: Exp): Boolean = e match {
     case StringLit(_) => true
     case IntLit(_) => true
+    case FloatLit(_) => true
     case BooleanLit(_) => true
     case ArrayLit(es) => es.forall(isAllowedInArrayLiteral)
     case NewMultiArray(_, ns) => true
@@ -321,6 +340,7 @@ object Typer {
 
   def convertTyTree(ty: TyTree): Type = ty match {
     case IntTyTree() => IntType()
+    case FloatTyTree() => FloatType()
     case BooleanTyTree() => BooleanType()
     case VoidTyTree() => VoidType()
     case ArrayTyTree(t) => ArrayType(convertTyTree(t))

@@ -50,6 +50,7 @@ TyTreeOrVoid : TyTree
 
 BaseTyTree : TyTree
   = "int"                         {IntTyTree}
+  | "float"                       {FloatTyTree}
   | "boolean"                     {BooleanTyTree}
   .
 
@@ -60,6 +61,7 @@ Param
 Primary : Exp
   = "{" Exp ++ "," "}"  {ArrayLit}
   | StringLiteral Spacing {StringLit}
+  | FloatLiteral Spacing {FloatLit, 1: Double.parseDouble : Double}
   | IntLiteral Spacing {IntLit, 1: Long.parseLong : Long}
   | "true" {True}
   | "false" {False}
@@ -116,6 +118,10 @@ Name : String
 
 IntLiteral : String
   = Digits
+  .
+
+FloatLiteral : String
+  = Digits '.' Digits
   .
 
 Digits : String

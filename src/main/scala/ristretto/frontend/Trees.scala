@@ -112,7 +112,7 @@ object Trees {
       case Sub(e1, e2) => Some((e1, e2))
       case Mul(e1, e2) => Some((e1, e2))
       case Div(e1, e2) => Some((e1, e2))
-      case Mod(e1, e2) => Some((e1, e2))
+//      case Mod(e1, e2) => Some((e1, e2))
       case _ => None
     }
   }

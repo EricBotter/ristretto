@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 
+typedef double rfloat;
 typedef uint64_t rint;
 typedef uint64_t rbool;
 

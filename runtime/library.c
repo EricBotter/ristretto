@@ -39,6 +39,14 @@ boolean2str(rbool b)
 }
 
 rintarray *
+float2str(rfloat b)
+{
+  char buf[256];
+  snprintf(buf, sizeof(buf), "%f", b);
+  return c2rstring(buf);
+}
+
+rintarray *
 int2str(rint b)
 {
   char buf[256];
