@@ -31,7 +31,10 @@ Stm {line}
   | "cjump" Exp "," Label {CJmp}
   | "jump" Label {Jmp}
   | "hstore" '[' Offset '+' Address ']' "," Value    {Store, 1: Integer.parseInt : Int}
+  | "hstoref" '[' Offset '+' Address ']' "," Value    {StoreF, 1: Integer.parseInt : Int}
+  | "i2f" TempName sp "=(cast)" Exp {I2F}
   | "move" TempName sp "=" Exp {Move}
+  | "movef" TempName sp "=" Exp {MoveF}
   | Label ':' {LabelStm}
   .
 
@@ -56,6 +59,7 @@ Exp
   | "call" Address '(' Exp ** "," ')' {Call}
   | "hallocate" '(' Size ')' {Alloc}
   | "hload" '[' Offset '+' Address ']'    {Load, 1: Integer.parseInt : Int}
+  | "hloadf" '[' Offset '+' Address ']'    {LoadF, 1: Integer.parseInt : Int}
   | Operator Exp1 "," Exp1 {BinOp}
   | Exp1
   .
@@ -71,6 +75,10 @@ Lit : Exp
   = Integer Spacing {1: Long.parseLong: Long}
   .
 
+LitF : Exp
+  = Float Spacing {1: Double.parseDouble: Double}
+  .
+
 Operator
   = "lt" {LT}
   | "gt" {GT}
@@ -78,15 +86,29 @@ Operator
   | "ge" {GE}
   | "eq" {EQ}
   | "ne" {NE}
+  | "ltf" {LTF}
+  | "gtf" {GTF}
+  | "lef" {LEF}
+  | "gef" {GEF}
+  | "eqf" {EQF}
+  | "nef" {NEF}
   | "add" {ADD}
   | "sub" {SUB}
   | "mul" {MUL}
   | "div" {DIV}
   | "rem" {REM}
+  | "addf" {ADDF}
+  | "subf" {SUBF}
+  | "mulf" {MULF}
+  | "divf" {DIVF}
   .
 
 Name : String
   = Identifier Spacing
+  .
+
+Float : String
+  = '-'? Digits '.' Digits
   .
 
 Integer : String

@@ -6,6 +6,8 @@ object Typer {
   import ristretto.frontend.Trees._
   import ristretto.main.{Compiler => Errors}
 
+  var types: Map[Exp, Type] = Map.empty
+
   sealed trait Type
   case class IntType() extends Type {
     override def toString = "int"
@@ -180,151 +182,156 @@ object Typer {
       }
   }
 
-  def typeCheck(e: Exp)(env: Env): Type = e match {
-    case IntLit(_) => IntType()
-    case FloatLit(_) => FloatType()
-    case BooleanLit(_) => BooleanType()
-    case StringLit(_) => ArrayType(IntType())
-    case Arith(e1, e2) =>
-      (typeCheck(e1)(env), typeCheck(e2)(env)) match {
-        case (IntType(), IntType()) => IntType()
-        case (FloatType(), IntType()) => FloatType()
-        case (IntType(), FloatType()) => FloatType()
-        case (FloatType(), FloatType()) => FloatType()
-        case _ =>
-          Errors.error(e, "operands of arithmetic operator must be integers or floats")
+  def typeCheck(e: Exp)(env: Env): Type = {
+    val out: Type = e match {
+      case IntLit(_) => IntType()
+      case FloatLit(_) => FloatType()
+      case BooleanLit(_) => BooleanType()
+      case StringLit(_) => ArrayType(IntType())
+      case Arith(e1, e2) =>
+        (typeCheck(e1)(env), typeCheck(e2)(env)) match {
+          case (IntType(), IntType()) => IntType()
+          case (FloatType(), IntType()) => FloatType()
+          case (IntType(), FloatType()) => FloatType()
+          case (FloatType(), FloatType()) => FloatType()
+          case _ =>
+            Errors.error(e, "operands of arithmetic operator must be integers or floats")
+            UnknownType()
+        }
+      case Mod(e1, e2) =>
+        (typeCheck(e1)(env), typeCheck(e2)(env)) match {
+          case (IntType(), IntType()) => IntType()
+          case _ =>
+            Errors.error(e, "operands of modulus operator must be integers")
+            UnknownType()
+        }
+      case Equality(e1, e2) =>
+        (typeCheck(e1)(env), typeCheck(e2)(env)) match {
+          case (t1, t2) if t1 == t2 => BooleanType()
+          case _ =>
+            Errors.error(e, "operands of equality operator must match")
+            UnknownType()
+        }
+      case Rel(e1, e2) =>
+        (typeCheck(e1)(env), typeCheck(e2)(env)) match {
+          case (IntType(), IntType()) => BooleanType()
+          case (FloatType(), IntType()) => BooleanType()
+          case (IntType(), FloatType()) => BooleanType()
+          case (FloatType(), FloatType()) => BooleanType()
+          case _ =>
+            Errors.error(e, "operands of relational operators must be integers or floats")
+            UnknownType()
+        }
+      case Bool(e1, e2) =>
+        (typeCheck(e1)(env), typeCheck(e2)(env)) match {
+          case (BooleanType(), BooleanType()) => BooleanType()
+          case _ =>
+            Errors.error(e, "operands of boolean operator must be booleans")
+            UnknownType()
+        }
+      case Not(e) =>
+        typeCheck(e)(env) match {
+          case BooleanType() => BooleanType()
+          case t =>
+            Errors.error(e, "operand of not operator must be boolean")
+            UnknownType()
+        }
+      case Neg(e) =>
+        typeCheck(e)(env) match {
+          case IntType() => IntType()
+          case FloatType() => FloatType()
+          case t =>
+            Errors.error(e, "operand of negation operator must be integer or float")
+            UnknownType()
+        }
+      case Var(x) => env.get(x) match {
+        case Some(ty) => ty
+        case None =>
+          Errors.error(e, s"variable ${x.toString} not found")
           UnknownType()
       }
-    case Mod(e1, e2) =>
-      (typeCheck(e1)(env), typeCheck(e2)(env)) match {
-        case (IntType(), IntType()) => IntType()
-        case _ =>
-          Errors.error(e, "operands of modulus operator must be integers")
-          UnknownType()
-      }
-    case Equality(e1, e2) =>
-      (typeCheck(e1)(env), typeCheck(e2)(env)) match {
-        case (t1, t2) if t1 == t2 => BooleanType()
-        case _ =>
-          Errors.error(e, "operands of equality operator must match")
-          UnknownType()
-      }
-    case Rel(e1, e2) =>
-      (typeCheck(e1)(env), typeCheck(e2)(env)) match {
-        case (IntType(), IntType()) => BooleanType()
-        case (FloatType(), IntType()) => BooleanType()
-        case (IntType(), FloatType()) => BooleanType()
-        case (FloatType(), FloatType()) => BooleanType()
-        case _ =>
-          Errors.error(e, "operands of relational operators must be integers or floats")
-          UnknownType()
-      }
-    case Bool(e1, e2) =>
-      (typeCheck(e1)(env), typeCheck(e2)(env)) match {
-        case (BooleanType(), BooleanType()) => BooleanType()
-        case _ =>
-          Errors.error(e, "operands of boolean operator must be booleans")
-          UnknownType()
-      }
-    case Not(e) =>
-      typeCheck(e)(env) match {
-        case BooleanType() => BooleanType()
-        case t =>
-          Errors.error(e, "operand of not operator must be boolean")
-          UnknownType()
-      }
-    case Neg(e) =>
-      typeCheck(e)(env) match {
-        case IntType() => IntType()
-        case FloatType() => FloatType()
-        case t =>
-          Errors.error(e, "operand of negation operator must be integer or float")
-          UnknownType()
-      }
-    case Var(x) => env.get(x) match {
-      case Some(ty) => ty
-      case None =>
-        Errors.error(e, s"variable ${x.toString} not found")
-        UnknownType()
-    }
-    case ArrayGet(a, i) =>
-      typeCheck(a)(env) match {
-        case ArrayType(t1) =>
-          typeCheck(i)(env) match {
+      case ArrayGet(a, i) =>
+        typeCheck(a)(env) match {
+          case ArrayType(t1) =>
+            typeCheck(i)(env) match {
+              case IntType() =>
+              case _ =>
+                Errors.error(e, "array index expression must be an integer")
+            }
+            t1
+          case t =>
+            Errors.error(e, "array expression must have array type")
+            UnknownType()
+        }
+      case ArrayLength(e1) =>
+        typeCheck(e1)(env) match {
+          case ArrayType(t1) => IntType()
+          case t =>
+            Errors.error(e, "array expression must have array type")
+            UnknownType()
+        }
+      case NewMultiArray(ty, es) =>
+        // We don't allow new (int[])[10] because we don't have null for unintialized array elements.
+        ty match {
+          case ArrayTyTree(_) =>
+            Errors.error(e, "must specify the sizes of all array dimensions. Cannot create a new array of arrays")
+          case _ =>
+        }
+        for (e <- es) {
+          typeCheck(e)(env) match {
             case IntType() =>
             case _ =>
-              Errors.error(e, "array index expression must be an integer")
+              Errors.error(e, "array size expression must be an integer")
           }
-          t1
-        case t =>
-          Errors.error(e, "array expression must have array type")
-          UnknownType()
-      }
-    case ArrayLength(e1) =>
-      typeCheck(e1)(env) match {
-        case ArrayType(t1) => IntType()
-        case t =>
-          Errors.error(e, "array expression must have array type")
-          UnknownType()
-      }
-    case NewMultiArray(ty, es) =>
-      // We don't allow new (int[])[10] because we don't have null for unintialized array elements.
-      ty match {
-        case ArrayTyTree(_) =>
-          Errors.error(e, "must specify the sizes of all array dimensions. Cannot create a new array of arrays")
-        case _ =>
-      }
-      for (e <- es) {
-        typeCheck(e)(env) match {
-          case IntType() =>
-          case _ =>
-            Errors.error(e, "array size expression must be an integer")
         }
-      }
-      es.foldLeft(convertTyTree(ty): Type) {
-        case (ty, e) => ArrayType(ty)
-      }
-    case ArrayLit(Nil) =>
-      Errors.error(e, "array literals must be non-empty")
-      ArrayType(UnknownType())
-    case ArrayLit(e::Nil) =>
-      if (! isAllowedInArrayLiteral(e)) {
-        Errors.error(e, "array literals may only contain literals or new array expressions")
-      }
-      typeCheck(e)(env) match {
-        case t => ArrayType(t)
-      }
-    case ArrayLit(e::es) =>
-      if (! isAllowedInArrayLiteral(e)) {
-        Errors.error(e, "array literals may only contain literals or new array expressions")
-      }
-      typeCheck(e)(env) match {
-        case t =>
-          typeCheck(ArrayLit(es))(env) match {
-            case ArrayType(ts) if t == ts => ArrayType(t)
-            case ts =>
-              Errors.error(e, "all array elements must be of the same type")
-              UnknownType()
-          }
-      }
-    case Call(f, es) =>
-      env.get(f) match {
-        case Some(FunType(formals, ret)) =>
-          val actuals = for (e <- es) yield {
-            typeCheck(e)(env)
-          }
-          if (actuals != formals) {
-            Errors.error(e, s"cannot pass arguments of type ${actuals.mkString("(", ", ", ")")} to function expecting ${formals.mkString("(", ", ", ")")}")
-          }
-          ret
-        case Some(ty) =>
-          Errors.error(e, s"function ${f.toString} must have function type")
-          UnknownType()
-        case None =>
-          Errors.error(e, s"function ${f.toString} not found")
-          UnknownType()
-      }
+        es.foldLeft(convertTyTree(ty): Type) {
+          case (ty, e) => ArrayType(ty)
+        }
+      case ArrayLit(Nil) =>
+        Errors.error(e, "array literals must be non-empty")
+        ArrayType(UnknownType())
+      case ArrayLit(e :: Nil) =>
+        if (!isAllowedInArrayLiteral(e)) {
+          Errors.error(e, "array literals may only contain literals or new array expressions")
+        }
+        typeCheck(e)(env) match {
+          case t => ArrayType(t)
+        }
+      case ArrayLit(e :: es) =>
+        if (!isAllowedInArrayLiteral(e)) {
+          Errors.error(e, "array literals may only contain literals or new array expressions")
+        }
+        typeCheck(e)(env) match {
+          case t =>
+            typeCheck(ArrayLit(es))(env) match {
+              case ArrayType(ts) if t == ts => ArrayType(t)
+              case ts =>
+                Errors.error(e, "all array elements must be of the same type")
+                UnknownType()
+            }
+        }
+      case Call(f, es) =>
+        env.get(f) match {
+          case Some(FunType(formals, ret)) =>
+            val actuals = for (e <- es) yield {
+              typeCheck(e)(env)
+            }
+            if (actuals != formals) {
+              Errors.error(e, s"cannot pass arguments of type ${actuals.mkString("(", ", ", ")")} to function expecting ${formals.mkString("(", ", ", ")")}")
+            }
+            ret
+          case Some(ty) =>
+            Errors.error(e, s"function ${f.toString} must have function type")
+            UnknownType()
+          case None =>
+            Errors.error(e, s"function ${f.toString} not found")
+            UnknownType()
+        }
+    }
+    types = types + (e -> out)
+    out
   }
+
 
   // Array literals are restricted to contain just literals and new array expressions
   // This ensures we can determine the dimensionality of the array without typing.
