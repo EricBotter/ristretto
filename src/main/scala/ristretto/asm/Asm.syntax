@@ -81,6 +81,10 @@ Pseudo : Operand
   = '%' Identifier Spacing
   .
 
+PseudoF : Operand
+  = '%f' Identifier Spacing
+  .
+
 Register : Operand
   = '%rax' Spacing {AX}
   | '%rbx' Spacing {BX}

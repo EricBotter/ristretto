@@ -103,6 +103,12 @@ object AsmGen {
     case P.GE() => JGE(label)
     case P.EQ() => JE(label)
     case P.NE() => JNE(label)
+    case P.LTF() => JL(label)
+    case P.GTF() => JG(label)
+    case P.LEF() => JLE(label)
+    case P.GEF() => JGE(label)
+    case P.EQF() => JE(label)
+    case P.NEF() => JNE(label)
   }
 
   def binop(operator: P.Operator, op1: Operand, op2: Operand, dst: Operand): List[Insn] = operator match {
@@ -125,6 +131,10 @@ object AsmGen {
       Div(BX()) ::
       Mov(DX(), dst) ::
       Nil
+    case P.ADDF() => MovF(op1, dst) :: AddF(op2, dst) :: Nil
+    case P.SUBF() => MovF(op1, dst) :: SubF(op2, dst) :: Nil
+    case P.MULF() => MovF(op1, dst) :: MulF(op2, dst) :: Nil
+    case P.DIVF() => MovF(op1, dst) :: DivF(op2, dst) :: Nil // float division is like add or mul
   }
 
   def translate(s: P.Stm): List[Insn] = CommentInsn(s"$s") :: translateStm(s)
@@ -143,6 +153,10 @@ object AsmGen {
       val (insns1, op1) = translate(addr)
       val (insns2, op2) = translate(value)
       insns1 ++ insns2 :+ Mov(op2, op1)
+    case P.StoreF(addr, value) =>
+      val (insns1, op1) = translate(addr)
+      val (insns2, op2) = translate(value)
+      insns1 ++ insns2 :+ MovF(op2, op1)
     case P.Call(t, P.Global(label)) =>
       // The return value is in AX
       Call(Name(s"_$label")) :: Mov(AX(), Pseudo(t)) :: Nil
@@ -153,10 +167,20 @@ object AsmGen {
     case P.Load(t, addr) =>
       val (insns, op) = translate(addr)
       insns :+ Mov(op, Pseudo(t))
+    case P.LoadF(t, addr) =>
+      val (insns, op) = translate(addr)
+      insns :+ MovF(op, Pseudo(t))
     case P.Move(t, e) =>
       val (insns, op) = translate(e)
       insns :+ Mov(op, Pseudo(t))
+    case P.MoveF(t, e) =>
+      val (insns, op) = translate(e)
+      insns :+ Mov(op, Pseudo(t))
     case P.Bin(t, op, e1, e2) =>
+      val (insns1, op1) = translate(e1)
+      val (insns2, op2) = translate(e2)
+      insns1 ++ insns2 ++ binop(op, op1, op2, Pseudo(t))
+    case P.BinF(t, op, e1, e2) =>
       val (insns1, op1) = translate(e1)
       val (insns2, op2) = translate(e2)
       insns1 ++ insns2 ++ binop(op, op1, op2, Pseudo(t))
@@ -164,10 +188,20 @@ object AsmGen {
     case P.SetArg(i, e) =>
       val (insns, op) = translate(e)
       insns :+ Mov(op, Arg(i))
+    case P.SetArgF(i, e) =>
+      val (insns, op) = translate(e)
+      insns :+ MovF(op, Arg(i))
 
     case P.Ret(e) =>
       val (insns, op) = translate(e)
       insns :+ Mov(op, AX()) :+ Ret()
+    case P.RetF(e) =>
+      val (insns, op) = translate(e)
+      insns :+ Mov(op, AX()) :+ Ret()
+
+    case P.I2F(i, e) =>
+      val (insns, op) = translate(e)
+      insns :+ I2F(op, Pseudo(i))
 
     case P.LabelStm(label) =>
       Label(label)::Nil
@@ -182,6 +216,8 @@ object AsmGen {
       (Mov(Name(label), Pseudo(t))::Nil, Pseudo(t))
     case P.Lit(v) =>
       (Nil, Immediate(v))
+    case P.LitF(v) =>
+      (Nil, Immediate(java.lang.Double.doubleToRawLongBits(v))) //TODO
     case P.Address(offset, base) =>
       val (insns, op) = translate(base)
       // The base should be a register (or pseudo)
