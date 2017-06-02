@@ -37,9 +37,17 @@ Insn {line}
   | "jge" Location {JGE}
   | "jle" Location {JLE}
   | "jne" Location {JNE}
+  | "addsd" Src "," Dst         {AddF}
+  | "subsd" Src "," Dst         {SubF}
+  | "mulsd" Src "," Dst         {MulF}
+  | "divsd" Src "," Dst         {DivF}
+  | "movsd" Src "," Dst         {MovF}
+  | "ucomisd" Register "," Register {CmpF}
+  | "cvtsi2sdq" Src "," Dst     {I2F}
   | "callq" Operand {Call}
   | "retq" {Ret}
   | Location ":" {Label}
+  | ".long" Integer {Constant}
   | "#" CommentString {CommentInsn}
   .
 
@@ -90,6 +98,22 @@ Register : Operand
   | '%r13' Spacing {R13}
   | '%r14' Spacing {R14}
   | '%r15' Spacing {R15}
+  | '%xmm0' Spacing {XMM0}
+  | '%xmm1' Spacing {XMM1}
+  | '%xmm2' Spacing {XMM2}
+  | '%xmm3' Spacing {XMM3}
+  | '%xmm4' Spacing {XMM4}
+  | '%xmm5' Spacing {XMM5}
+  | '%xmm6' Spacing {XMM6}
+  | '%xmm7' Spacing {XMM7}
+  | '%xmm8' Spacing {XMM8}
+  | '%xmm9' Spacing {XMM9}
+  | '%xmm10' Spacing {XMM10}
+  | '%xmm11' Spacing {XMM11}
+  | '%xmm12' Spacing {XMM12}
+  | '%xmm13' Spacing {XMM13}
+  | '%xmm14' Spacing {XMM14}
+  | '%xmm15' Spacing {XMM15}
   .
 
 Value : String

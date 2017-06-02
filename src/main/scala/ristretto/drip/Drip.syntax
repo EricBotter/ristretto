@@ -67,6 +67,7 @@ Exp
 Exp1 : Exp
   = TempName {Temp}
   | Lit
+  | LitF
   | '$' Label  {Global}
   | '(' Exp ')'
   .

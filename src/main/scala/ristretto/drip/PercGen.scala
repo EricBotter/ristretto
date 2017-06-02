@@ -47,8 +47,21 @@ object PercGen {
       translate(address, t1) ++ translate(value, t2) :+
         P.Store(P.Address(offset, P.Temp(t1)), P.Temp(t2))
 
+    case D.StoreF(offset, address, value) =>
+      val t1 = newTemp()
+      val t2 = newTemp()
+      translate(address, t1) ++ translate(value, t2) :+
+        P.StoreF(P.Address(offset, P.Temp(t1)), P.Temp(t2))
+
     case D.Move(t, e) =>
       translate(e, t)
+
+    case D.MoveF(t, e) =>
+      translate(e, t) //FIXME
+
+    case D.I2F(t, e) =>
+      val t1 = newTemp()
+      translate(e, t1) :+ P.I2F(t, P.Temp(t1))
 
     case D.LabelStm(l) =>
       P.LabelStm(l) :: Nil
@@ -91,6 +104,14 @@ object PercGen {
           P.Bin(t, P.MUL(), P.Temp(t1), P.Temp(t2)) :: Nil
         case DIV() =>
           P.Bin(t, P.DIV(), P.Temp(t1), P.Temp(t2)) :: Nil
+        case ADDF() =>
+          P.Bin(t, P.ADDF(), P.Temp(t1), P.Temp(t2)) :: Nil
+        case SUBF() =>
+          P.Bin(t, P.SUBF(), P.Temp(t1), P.Temp(t2)) :: Nil
+        case MULF() =>
+          P.Bin(t, P.MULF(), P.Temp(t1), P.Temp(t2)) :: Nil
+        case DIVF() =>
+          P.Bin(t, P.DIVF(), P.Temp(t1), P.Temp(t2)) :: Nil
         case REM() =>
           P.Bin(t, P.REM(), P.Temp(t1), P.Temp(t2)) :: Nil
         case LT() =>
@@ -153,6 +174,66 @@ object PercGen {
             P.Move(t, P.Lit(0)),
             P.LabelStm(l1)
           )
+        case LTF() =>
+          val tx = newTemp()
+          val l1 = newLabel()
+          List(
+            P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
+            P.Move(t, P.Lit(1)),
+            P.CJmp(P.LTF(), P.Temp(tx), l1),
+            P.Move(t, P.Lit(0)),
+            P.LabelStm(l1)
+          )
+        case GTF() =>
+          val tx = newTemp()
+          val l1 = newLabel()
+          List(
+            P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
+            P.Move(t, P.Lit(1)),
+            P.CJmp(P.GTF(), P.Temp(tx), l1),
+            P.Move(t, P.Lit(0)),
+            P.LabelStm(l1)
+          )
+        case LEF() =>
+          val tx = newTemp()
+          val l1 = newLabel()
+          List(
+            P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
+            P.Move(t, P.Lit(1)),
+            P.CJmp(P.LEF(), P.Temp(tx), l1),
+            P.Move(t, P.Lit(0)),
+            P.LabelStm(l1)
+          )
+        case GEF() =>
+          val tx = newTemp()
+          val l1 = newLabel()
+          List(
+            P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
+            P.Move(t, P.Lit(1)),
+            P.CJmp(P.GEF(), P.Temp(tx), l1),
+            P.Move(t, P.Lit(0)),
+            P.LabelStm(l1)
+          )
+        case EQF() =>
+          val tx = newTemp()
+          val l1 = newLabel()
+          List(
+            P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
+            P.Move(t, P.Lit(1)),
+            P.CJmp(P.EQF(), P.Temp(tx), l1),
+            P.Move(t, P.Lit(0)),
+            P.LabelStm(l1)
+          )
+        case NEF() =>
+          val tx = newTemp()
+          val l1 = newLabel()
+          List(
+            P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
+            P.Move(t, P.Lit(1)),
+            P.CJmp(P.NEF(), P.Temp(tx), l1),
+            P.Move(t, P.Lit(0)),
+            P.LabelStm(l1)
+          )
       }
       r1 ++ r2 ++ r3
 
@@ -164,6 +245,9 @@ object PercGen {
 
     case D.Lit(n) =>
       P.Move(t, P.Lit(n)) :: Nil
+
+    case D.LitF(n) =>
+      P.MoveF(t, P.LitF(n)) :: Nil
 
     case D.Global(x) =>
       P.Move(t, P.Global(x)) :: Nil

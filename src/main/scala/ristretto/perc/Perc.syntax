@@ -35,6 +35,13 @@ Stm {line}
   | TempName sp "=" Operator Exp "," Exp {Bin}
   | "setarg" Integer Spacing "," Exp  {SetArg, 1: Integer.parseInt: Int}
   | "ret" Exp  {Ret}
+  | "storef" Address "=" Value                      {StoreF}
+  | TempName sp "=f" "load" Address  {LoadF}
+  | TempName sp "=f" Exp {MoveF}
+  | TempName sp "=f" Operator Exp "," Exp {BinF}
+  | TempName sp "=i2f" Exp {I2F}
+  | "setargf" Integer Spacing "," Exp  {SetArgF, 1: Integer.parseInt: Int}
+  | "retf" Exp  {RetF}
   | Label ':' {LabelStm}
   .
 
@@ -61,6 +68,10 @@ Lit : Exp
   = Integer Spacing {1: Long.parseLong: Long}
   .
 
+LitF : Exp
+  = Float Spacing {1: Double.parseDouble: Double}
+  .
+
 Address : Exp
   = "[" Offset "+" Base "]"    {1: Integer.parseInt : Int}
   .
@@ -71,6 +82,10 @@ Operator
   | "mul" {MUL}
   | "div" {DIV}
   | "rem" {REM}
+  | "addf" {ADDF}
+  | "subf" {SUBF}
+  | "mulf" {MULF}
+  | "divf" {DIVF}
   .
 
 Comparison
@@ -80,6 +95,12 @@ Comparison
   | "ge" {GE}
   | "eq" {EQ}
   | "ne" {NE}
+  | "ltf" {LTF}
+  | "gtf" {GTF}
+  | "lef" {LEF}
+  | "gef" {GEF}
+  | "eqf" {EQF}
+  | "nef" {NEF}
   .
 
 Name : String
@@ -89,6 +110,10 @@ Name : String
 Integer : String
   = '-'? Digits
   | '-'? HexDigits
+  .
+
+Float : String
+  = '-'? Digits '.' Digits
   .
 
 Digits : String
