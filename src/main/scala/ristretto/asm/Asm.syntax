@@ -73,8 +73,8 @@ Operand
   | Identifier  Spacing          {Name}
   | Register
   | Pseudo
-  | '%param' Integer Spacing {Param, 1: Integer.parseInt: Int}
-  | '%arg' Integer Spacing {Arg, 1: Integer.parseInt: Int}
+  | '%param' Integer Spacing Identifier Spacing {Param, 1: Integer.parseInt: Int}
+  | '%arg' Integer Spacing Identifier Spacing {Arg, 1: Integer.parseInt: Int}
   .
 
 Pseudo : Operand

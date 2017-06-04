@@ -7,6 +7,9 @@ object Typer {
   import ristretto.main.{Compiler => Errors}
 
   var types: Map[Exp, Type] = Map.empty
+  var functions: Map[String, FunType] = Map.empty +
+    ("_ristretto_die" -> FunType(IntType() :: Nil, VoidType())) +
+    ("ristretto_alloc" -> FunType(IntType() :: Nil, IntType()))
 
   sealed trait Type
   case class IntType() extends Type {
@@ -39,9 +42,13 @@ object Typer {
 
   def makeEnv(dfns: List[Def]) = dfns.foldLeft(Map.empty: Env) {
     case (env, FunDef(ty, x, params, body)) =>
-      env + (x -> makeFunType(params, ty))
+      val f = makeFunType(params, ty).asInstanceOf[FunType]
+      functions = functions + (x -> f)
+      env + (x -> f)
     case (env, ExternDef(ty, x, params)) =>
-      env + (x -> makeFunType(params, ty))
+      val f = makeFunType(params, ty).asInstanceOf[FunType]
+      functions = functions + (x -> f)
+      env + (x -> f)
   }
 
   def typeCheck(r: Root): Unit = r match {

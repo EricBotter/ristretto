@@ -102,6 +102,9 @@ object DripGen {
       case ArrayAssign(a, i, v) =>
         val ta = newTemp()
         val ti = newTemp()
+        Typer.types = Typer.types + (Var(ta) -> Typer.types(a))
+        Typer.types = Typer.types + (ArrayLength(Var(ta)) -> Typer.IntType())
+        Typer.types = Typer.types + (Var(ti) -> Typer.types(i))
         val Lok = newLabel()
         D.Move(ta, translate(a)) ::
           D.Move(ti, translate(i)) ::
@@ -291,7 +294,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.DIVF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.DIVF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.DIVF(), translate(e1), translate(e2))
           }
@@ -431,12 +434,17 @@ object DripGen {
 
         case ArrayLength(a) =>
           val ta = newTemp()
+          Typer.types = Typer.types + (Var(ta) -> Typer.types(a))
+          Typer.types = Typer.types + (ArrayLength(Var(ta)) -> Typer.IntType())
           D.Load(0, translate(a))
 
         case ArrayGet(a, i) =>
           val ta = newTemp()
           val ti = newTemp()
           val t2 = newTemp()
+          Typer.types = Typer.types + (Var(ta) -> Typer.types(a),
+            ArrayLength(Var(ta)) -> Typer.IntType(),
+            Var(ti) -> Typer.types(i))
           val Lok = newLabel()
           D.Begin(D.Move(ta, translate(a)) ::
             D.Move(ti, translate(i)) ::

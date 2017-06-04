@@ -33,14 +33,13 @@ Stm {line}
   | TempName sp "=" "load" Address  {Load}
   | TempName sp "=" Exp {Move}
   | TempName sp "=" Operator Exp "," Exp {Bin}
-  | "setarg" Integer Spacing "," Exp  {SetArg, 1: Integer.parseInt: Int}
+  | "setarg" Integer Spacing Name "," Exp  {SetArg, 1: Integer.parseInt: Int}
   | "ret" Exp  {Ret}
   | "storef" Address "=" Value                      {StoreF}
   | TempName sp "=f" "load" Address  {LoadF}
   | TempName sp "=f" Exp {MoveF}
   | TempName sp "=f" Operator Exp "," Exp {BinF}
   | TempName sp "=i2f" Exp {I2F}
-  | "setargf" Integer Spacing "," Exp  {SetArgF, 1: Integer.parseInt: Int}
   | "retf" Exp  {RetF}
   | Label ':' {LabelStm}
   .

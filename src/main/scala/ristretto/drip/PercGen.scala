@@ -76,19 +76,23 @@ object PercGen {
     case D.Call(f, es) =>
       val temps = es.indices.map(i => newTemp())
       val stms = es.indices.map(i => translate(es(i), temps(i)))
-      val regset = es.indices.map(i => P.SetArg(i, P.Temp(temps(i))))
+      val regset = es.indices.map(i => P.SetArg(i, f.asInstanceOf[D.Global].label, P.Temp(temps(i))))
       stms.flatten.toList ++ regset :+
         P.Call(t, P.Global(f.asInstanceOf[D.Global].label))
 
     case D.Alloc(sz) =>
       val tsz = newTemp()
       translate(sz, tsz) :+
-        P.SetArg(0, P.Temp(tsz)) :+
+        P.SetArg(0, "ristretto_alloc", P.Temp(tsz)) :+
         P.Call(t, P.Global("ristretto_alloc"))
 
     case D.Load(offset, addr) =>
       val t1 = newTemp()
       translate(addr, t1) :+ P.Load(t, P.Address(offset, P.Temp(t1)))
+
+    case D.LoadF(offset, addr) =>
+      val t1 = newTemp()
+      translate(addr, t1) :+ P.LoadF(t, P.Address(offset, P.Temp(t1)))
 
     case D.BinOp(op, e1, e2) =>
       val t1 = newTemp()

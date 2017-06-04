@@ -1,10 +1,11 @@
 package ristretto.perc
 
+import ristretto.frontend.Typer
+
 // Generate Asm with Pseudo register from Perc
 object AsmGen {
   import ristretto.perc.{PercSyntax => P}
   import ristretto.asm.AsmSyntax._
-  import ristretto.main.{Compiler => Errors}
 
   type Label = String
   type Temp = String
@@ -23,15 +24,15 @@ object AsmGen {
     case P.Root(procs) =>
       val aprocs = procs map {
         case proc @ P.Proc(label, params, stms) =>
-          Proc(label, translate(stms, params))
+          Proc(label, translate(label, stms, params))
       }
       Root(aprocs)
   }
 
-  def translate(stms: List[P.Stm], params: List[TempName]): List[Insn] = {
+  def translate(label: String, stms: List[P.Stm], params: List[TempName]): List[Insn] = {
     // Copy the parameters into the function.
     val saveParams = params.zipWithIndex map {
-      case (x, i) => Mov(Param(i), Pseudo(x))
+      case (x, i) => Mov(Param(i, label), Pseudo(x))
     }
 
     val insns = for {
@@ -46,9 +47,21 @@ object AsmGen {
 
   def isAddress(op: Operand): Boolean = op match {
     case Address(_, _) => true
-    // On x86-64 the firt 6 parameters are passed in registers, the rest on the stack.
-    case Arg(i) if (i >= 6 || WORDSIZE == 4) => true
-    case Param(i) if (i >= 6 || WORDSIZE == 4) => true
+    // On x86-64 the first 6 parameters are passed in registers, the rest on the stack.
+    case Arg(i, n) =>
+      Typer.functions(n).args(i) match {
+        case Typer.FloatType() =>
+          Typer.functions(n).args.splitAt(i)._1.count(_.isInstanceOf[Typer.FloatType]) >= 8
+        case _ =>
+          Typer.functions(n).args.splitAt(i)._1.count(!_.isInstanceOf[Typer.FloatType]) >= 6
+      }
+    case Param(i, n) =>
+      Typer.functions(n).args(i) match {
+        case Typer.FloatType() =>
+          Typer.functions(n).args.splitAt(i)._1.count(_.isInstanceOf[Typer.FloatType]) >= 8
+        case _ =>
+          Typer.functions(n).args.splitAt(i)._1.count(!_.isInstanceOf[Typer.FloatType]) >= 6
+      }
     case Pseudo(_) => false
     case _ => false
   }
@@ -143,7 +156,7 @@ object AsmGen {
     case P.Nop() =>
       Mov(AX(), AX()) :: Nil
     case P.ErrorStm(n) =>
-      Mov(Immediate(n), Arg(0)) :: Call(Name("_ristretto_die")) :: Nil
+      Mov(Immediate(n), Arg(0, "_ristretto_die")) :: Call(Name("_ristretto_die")) :: Nil
     case P.CJmp(cmp, e, label) =>
       val (insns, op) = translate(e)
       insns :+ Cmp(Immediate(0), op) :+ cjump(cmp, label)
@@ -185,12 +198,9 @@ object AsmGen {
       val (insns2, op2) = translate(e2)
       insns1 ++ insns2 ++ binop(op, op1, op2, Pseudo(t))
 
-    case P.SetArg(i, e) =>
+    case P.SetArg(i, n, e) =>
       val (insns, op) = translate(e)
-      insns :+ Mov(op, Arg(i))
-    case P.SetArgF(i, e) =>
-      val (insns, op) = translate(e)
-      insns :+ MovF(op, Arg(i))
+      insns :+ Mov(op, Arg(i, n))
 
     case P.Ret(e) =>
       val (insns, op) = translate(e)
