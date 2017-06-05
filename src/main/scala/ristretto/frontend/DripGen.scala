@@ -233,7 +233,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.ADDF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.ADDF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.ADDF(), translate(e1), translate(e2))
           }
@@ -251,7 +251,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.SUBF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.SUBF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.SUBF(), translate(e1), translate(e2))
           }
@@ -269,7 +269,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.MULF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.MULF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.MULF(), translate(e1), translate(e2))
           }
@@ -319,7 +319,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.EQF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.EQF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.EQF(), translate(e1), translate(e2))
             case _ =>
@@ -337,7 +337,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.NEF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.NEF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.NEF(), translate(e1), translate(e2))
             case _ =>
@@ -355,7 +355,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.LTF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.LTF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.LTF(), translate(e1), translate(e2))
             case _ =>
@@ -373,7 +373,7 @@ object DripGen {
             case (Typer.FloatType(), Typer.IntType()) =>
               val t = newTemp()
               D.Begin(D.I2F(t, translate(e2)) :: Nil,
-                D.BinOp(D.LEF(), translate(e2), D.Temp(t)))
+                D.BinOp(D.LEF(), translate(e1), D.Temp(t)))
             case (Typer.FloatType(), Typer.FloatType()) =>
               D.BinOp(D.LEF(), translate(e1), translate(e2))
             case _ =>

@@ -184,7 +184,7 @@ object PercGen {
           List(
             P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
             P.Move(t, P.Lit(1)),
-            P.CJmp(P.LTF(), P.Temp(tx), l1),
+            P.CJmpF(P.LTF(), P.Temp(tx), l1),
             P.Move(t, P.Lit(0)),
             P.LabelStm(l1)
           )
@@ -194,7 +194,7 @@ object PercGen {
           List(
             P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
             P.Move(t, P.Lit(1)),
-            P.CJmp(P.GTF(), P.Temp(tx), l1),
+            P.CJmpF(P.GTF(), P.Temp(tx), l1),
             P.Move(t, P.Lit(0)),
             P.LabelStm(l1)
           )
@@ -204,7 +204,7 @@ object PercGen {
           List(
             P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
             P.Move(t, P.Lit(1)),
-            P.CJmp(P.LEF(), P.Temp(tx), l1),
+            P.CJmpF(P.LEF(), P.Temp(tx), l1),
             P.Move(t, P.Lit(0)),
             P.LabelStm(l1)
           )
@@ -214,7 +214,7 @@ object PercGen {
           List(
             P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
             P.Move(t, P.Lit(1)),
-            P.CJmp(P.GEF(), P.Temp(tx), l1),
+            P.CJmpF(P.GEF(), P.Temp(tx), l1),
             P.Move(t, P.Lit(0)),
             P.LabelStm(l1)
           )
@@ -224,7 +224,7 @@ object PercGen {
           List(
             P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
             P.Move(t, P.Lit(1)),
-            P.CJmp(P.EQF(), P.Temp(tx), l1),
+            P.CJmpF(P.EQF(), P.Temp(tx), l1),
             P.Move(t, P.Lit(0)),
             P.LabelStm(l1)
           )
@@ -234,7 +234,7 @@ object PercGen {
           List(
             P.Bin(tx, P.SUBF(), P.Temp(t1), P.Temp(t2)),
             P.Move(t, P.Lit(1)),
-            P.CJmp(P.NEF(), P.Temp(tx), l1),
+            P.CJmpF(P.NEF(), P.Temp(tx), l1),
             P.Move(t, P.Lit(0)),
             P.LabelStm(l1)
           )

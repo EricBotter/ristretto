@@ -116,10 +116,10 @@ object AsmGen {
     case P.GE() => JGE(label)
     case P.EQ() => JE(label)
     case P.NE() => JNE(label)
-    case P.LTF() => JL(label)
-    case P.GTF() => JG(label)
-    case P.LEF() => JLE(label)
-    case P.GEF() => JGE(label)
+    case P.LTF() => JB(label)
+    case P.GTF() => JA(label)
+    case P.LEF() => JBE(label)
+    case P.GEF() => JAE(label)
     case P.EQF() => JE(label)
     case P.NEF() => JNE(label)
   }
@@ -160,6 +160,11 @@ object AsmGen {
     case P.CJmp(cmp, e, label) =>
       val (insns, op) = translate(e)
       insns :+ Cmp(Immediate(0), op) :+ cjump(cmp, label)
+    case P.CJmpF(cmp, e, label) =>
+      val (insns, op) = translate(e)
+      val t = newTemp()
+      val insns2 = translate(P.MoveF(t, P.LitF(0.0)))
+      insns ++ insns2 :+ CmpF(Pseudo(t), op) :+ cjump(cmp, label)
     case P.Jmp(label) =>
       Jmp(label) :: Nil
     case P.Store(addr, value) =>
@@ -227,7 +232,7 @@ object AsmGen {
     case P.Lit(v) =>
       (Nil, Immediate(v))
     case P.LitF(v) =>
-      (Nil, Immediate(java.lang.Double.doubleToRawLongBits(v))) //TODO
+      (Nil, Immediate(java.lang.Double.doubleToRawLongBits(v)))
     case P.Address(offset, base) =>
       val (insns, op) = translate(base)
       // The base should be a register (or pseudo)

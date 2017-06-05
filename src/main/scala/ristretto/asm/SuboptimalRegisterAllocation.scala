@@ -179,6 +179,10 @@ object SuboptimalRegisterAllocation {
     case JGE(label) => Nil
     case JLE(label) => Nil
     case JNE(label) => Nil
+    case JA(label) => Nil
+    case JAE(label) => Nil
+    case JB(label) => Nil
+    case JBE(label) => Nil
     case Call(fun) => collectPseudos(fun)
     case Ret() => Nil
     case Label(location) => Nil
@@ -226,6 +230,10 @@ object SuboptimalRegisterAllocation {
     case JGE(label) => Nil
     case JLE(label) => Nil
     case JNE(label) => Nil
+    case JA(label) => Nil
+    case JAE(label) => Nil
+    case JB(label) => Nil
+    case JBE(label) => Nil
     case Call(fun) => collectArgs(fun)
     case Ret() => Nil
     case Label(location) => Nil

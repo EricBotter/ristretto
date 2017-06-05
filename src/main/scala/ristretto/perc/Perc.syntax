@@ -35,6 +35,7 @@ Stm {line}
   | TempName sp "=" Operator Exp "," Exp {Bin}
   | "setarg" Integer Spacing Name "," Exp  {SetArg, 1: Integer.parseInt: Int}
   | "ret" Exp  {Ret}
+  | "cjumpf" Comparison Exp "," Label {CJmpF}
   | "storef" Address "=" Value                      {StoreF}
   | TempName sp "=f" "load" Address  {LoadF}
   | TempName sp "=f" Exp {MoveF}

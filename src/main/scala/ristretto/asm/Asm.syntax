@@ -37,6 +37,10 @@ Insn {line}
   | "jge" Location {JGE}
   | "jle" Location {JLE}
   | "jne" Location {JNE}
+  | "ja" Location {JA}
+  | "jb" Location {JB}
+  | "jae" Location {JAE}
+  | "jbe" Location {JBE}
   | "addsd" Src "," Dst         {AddF}
   | "subsd" Src "," Dst         {SubF}
   | "mulsd" Src "," Dst         {MulF}
@@ -47,7 +51,6 @@ Insn {line}
   | "callq" Operand {Call}
   | "retq" {Ret}
   | Location ":" {Label}
-  | ".long" Integer {Constant}
   | "#" CommentString {CommentInsn}
   .
 
