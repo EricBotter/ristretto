@@ -32,6 +32,9 @@ void main() {
     avg = avg / i;
 	println(float2str(avg));
 
+	// demonstrate calls
+	println(float2str(add(6, 4.8));
+
 	// more demos
 	float y = 4 / 7.0;
 	println(float2str(y));
